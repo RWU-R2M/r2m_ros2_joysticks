@@ -1,0 +1,18 @@
+services:
+  ros-joysticks:
+    container_name: ros2_joysticks
+    image: fbe-dockerreg.rwu.de/prj-iki-ros2/utils/ros2-joysticks:main
+    environment:
+      DISPLAY: $DISPLAY
+      ROS_DOMAIN_ID: $ROS_DOMAIN_ID
+    network_mode: host
+    privileged: true
+    stdin_open: true
+    volumes:
+      - /dev/input:/dev/input
+      - ../config:/config
+    command:
+      - bash
+      - -c
+      - "source /opt/ros/jazzy/setup.bash && source /root/ros2_ws/install/setup.bash && ros2 launch ros2_joysticks teleop_twist_joy_odrive_launch.py"
+
