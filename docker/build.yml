@@ -1,6 +1,6 @@
 services:
   ros-joysticks:
-    image: fbe-dockerreg.rwu.de/prj-iki-ros2/utils/ros2-joysticks:main
+    image: ghcr.io/rwu-r2m/r2m-ros-joysticks:main
     build:
       context: ..
       dockerfile: docker/Dockerfile
