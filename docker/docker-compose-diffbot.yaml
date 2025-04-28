@@ -1,7 +1,7 @@
 services:
   ros-joysticks:
     container_name: ros2_joysticks
-    image: ghcr.io/rwu-r2m/r2m-ros-joysticks:main
+    image: ghcr.io/rwu-r2m/r2m_ros2_joysticks:latest
     environment:
       DISPLAY: $DISPLAY
       ROS_DOMAIN_ID: $ROS_DOMAIN_ID
