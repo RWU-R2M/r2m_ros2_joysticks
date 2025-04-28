@@ -10,7 +10,7 @@ permissions:
   packages: write
 
 jobs:
-  build-amd64:
+  build-push-amd64:
     runs-on: ubuntu-latest
     name: Build AMD64 Image
 
@@ -30,8 +30,16 @@ jobs:
         echo "REPO_OWNER=$REPO_OWNER" >> $GITHUB_ENV
         echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
+    - name: Set up Docker Context for Buildx
+      id: buildx-context
+      run: |
+        docker context create builders
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
+      with:
+        version: latest
+        endpoint: builders
 
     - name: Log in to GitHub Container Registry
       uses: docker/login-action@v2
@@ -48,10 +56,11 @@ jobs:
         platforms: linux/amd64
         push: true
         tags: |
+          ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:latest-amd64
+          ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ github.sha }}-amd64
           ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ env.BRANCH_NAME }}-amd64
-          ${{ github.ref == 'refs/heads/main' && format('ghcr.io/{0}/{1}:latest-amd64', env.REPO_OWNER, env.REPO_NAME) || '' }}
 
-  build-arm64:
+  build-push-arm64:
     runs-on: ubuntu-24.04-arm
     name: Build ARM64 Image
 
@@ -71,8 +80,16 @@ jobs:
         echo "REPO_OWNER=$REPO_OWNER" >> $GITHUB_ENV
         echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
+    - name: Set up Docker Context for Buildx
+      id: buildx-context
+      run: |
+        docker context create builders
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
+      with:
+        version: latest
+        endpoint: builders
 
     - name: Log in to GitHub Container Registry
       uses: docker/login-action@v2
@@ -89,5 +106,61 @@ jobs:
         platforms: linux/arm64
         push: true
         tags: |
+          ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:latest-arm64
+          ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ github.sha }}-arm64
           ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ env.BRANCH_NAME }}-arm64
-          ${{ github.ref == 'refs/heads/main' && format('ghcr.io/{0}/{1}:latest-arm64', env.REPO_OWNER, env.REPO_NAME) || '' }}
+
+  create-manifests:
+    runs-on: ubuntu-latest
+    needs: [build-push-amd64, build-push-arm64]
+    name: Create Multi-Arch Manifest
+
+    steps:
+    - name: Check out the repository
+      uses: actions/checkout@v3
+
+    - name: Extract repository name and branch
+      run: |
+        REPO_NAME=$(echo "${{ github.repository }}" | awk -F '/' '{print $2}' | tr '[:upper:]' '[:lower:]')
+        REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+        BRANCH_NAME=$(echo "${{ github.ref_name }}" | tr '/' '-' | tr '[:upper:]' '[:lower:]')
+        echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
+        echo "REPO_OWNER=$REPO_OWNER" >> $GITHUB_ENV
+        echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+        
+    - name: Enable Docker experimental features
+      run: |
+        mkdir -p $HOME/.docker
+        echo '{"experimental": "enabled"}' > $HOME/.docker/config.json
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Create SHA manifest and push
+      run: |
+        docker manifest create \
+          ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ github.sha }} \
+          --amend ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ github.sha }}-amd64 \
+          --amend ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ github.sha }}-arm64
+        docker manifest push ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ github.sha }}
+
+    - name: Create branch manifest and push
+      run: |
+        docker manifest create \
+          ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ env.BRANCH_NAME }} \
+          --amend ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ env.BRANCH_NAME }}-amd64 \
+          --amend ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ env.BRANCH_NAME }}-arm64
+        docker manifest push ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ env.BRANCH_NAME }}
+
+    - name: Create latest manifest and push
+      if: github.ref == 'refs/heads/main'
+      run: |
+        docker manifest create \
+          ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:latest \
+          --amend ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:latest-amd64 \
+          --amend ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:latest-arm64
+        docker manifest push ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:latest
