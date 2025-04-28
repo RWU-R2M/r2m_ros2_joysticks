@@ -6,12 +6,14 @@ Now ported for the diff_bot.
 
 You can change the config file as needed or create a new one.
 
+## Build status
+
+![Multi-Arch Build](https://github.com/RWU-R2M/r2m_ros2_joysticks/actions/workflows/docker-push.yml/badge.svg?branch=main)
+
 ## Getting started
 ```bash
 docker compose -f docker/docker-compose.yaml up
 ```
-
-If you are not in University wifi to pull the image you can also build it locally as explained below.
 
 ## Build
 ```bash
