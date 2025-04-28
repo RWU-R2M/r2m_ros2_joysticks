@@ -55,6 +55,7 @@ jobs:
         file: ./docker/Dockerfile
         platforms: linux/amd64
         push: true
+        provenance: false
         tags: |
           ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:latest-amd64
           ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ github.sha }}-amd64
@@ -105,6 +106,7 @@ jobs:
         file: ./docker/Dockerfile
         platforms: linux/arm64
         push: true
+        provenance: false
         tags: |
           ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:latest-arm64
           ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ github.sha }}-arm64
@@ -142,25 +144,25 @@ jobs:
 
     - name: Create SHA manifest and push
       run: |
-        docker manifest create \
-          ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ github.sha }} \
-          --amend ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ github.sha }}-amd64 \
-          --amend ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ github.sha }}-arm64
-        docker manifest push ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ github.sha }}
+        # Using buildx imagetools instead of docker manifest
+        docker buildx imagetools create \
+          -t ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ github.sha }} \
+          ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ github.sha }}-amd64 \
+          ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ github.sha }}-arm64
 
     - name: Create branch manifest and push
       run: |
-        docker manifest create \
-          ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ env.BRANCH_NAME }} \
-          --amend ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ env.BRANCH_NAME }}-amd64 \
-          --amend ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ env.BRANCH_NAME }}-arm64
-        docker manifest push ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ env.BRANCH_NAME }}
+        # Using buildx imagetools instead of docker manifest
+        docker buildx imagetools create \
+          -t ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ env.BRANCH_NAME }} \
+          ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ env.BRANCH_NAME }}-amd64 \
+          ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:${{ env.BRANCH_NAME }}-arm64
 
     - name: Create latest manifest and push
       if: github.ref == 'refs/heads/main'
       run: |
-        docker manifest create \
-          ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:latest \
-          --amend ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:latest-amd64 \
-          --amend ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:latest-arm64
-        docker manifest push ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:latest
+        # Using buildx imagetools instead of docker manifest
+        docker buildx imagetools create \
+          -t ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:latest \
+          ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:latest-amd64 \
+          ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}:latest-arm64
